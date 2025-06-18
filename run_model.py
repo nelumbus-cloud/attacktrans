@@ -89,6 +89,7 @@ def evaluate_misclassification(model, base_data, pt_file):
             total += 1
 
         rate = misclassified / total
+        
         results.append({
             "budget": n_pert,
             "misclassification_rate": round(rate, 4)
