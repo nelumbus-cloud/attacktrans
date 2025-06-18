@@ -1,0 +1,22 @@
+[
+  {
+    "budget": 1,
+    "misclassification_rate": 0.35
+  },
+  {
+    "budget": 2,
+    "misclassification_rate": 0.45
+  },
+  {
+    "budget": 3,
+    "misclassification_rate": 0.425
+  },
+  {
+    "budget": 4,
+    "misclassification_rate": 0.475
+  },
+  {
+    "budget": 5,
+    "misclassification_rate": 0.4
+  }
+]
