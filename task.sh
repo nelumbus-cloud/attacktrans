@@ -1,20 +1,18 @@
 #!/bin/bash
-dataset="Amazon-ratings"
-seed=11
-DIR="logs"
-if [ ! -d "$DIR" ]; then
-  mkdir "$DIR"
-fi
 
-for i in {1..5}
-do
-    timestamp=$(date +%Y%m%d_%H%M%S)
-    output_file="logs/${dataset}_${seed}_${timestamp}.txt"
+# Define seeds and datasets
+seeds=(33)
+datasets=("Citeseer")
+filename='Citeseer_h2gcn.csv'
+model='h2gcn'
+attack='metattack'
 
-    echo "Running attack with seed $seed..."
-    python attack.py --seed $seed > "$output_file"
-    echo "Finished attack with seed $seed!"
+mkdir -p logs
 
-    seed=$((seed + 10))  # increment seed
-
+for seed in "${seeds[@]}"; do
+  for dataset in "${datasets[@]}"; do
+    echo "Running dataset=$dataset, seed=$seed"
+    python attack.py --seed "$seed" --dataset "$dataset" --output "$filename" --attack "$attack" --model "$model" >> logs/sat_aug31242.txt
+  done
 done
+

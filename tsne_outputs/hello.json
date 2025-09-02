@@ -1,0 +1,27 @@
+{
+  "portfolio_name": "Balanced Growth Fund",
+  "total_value": 1000000,
+  "allocation": [
+    {
+      "asset_class": "Equities",
+      "percentage": 50,
+      "description": "Large-cap and mid-cap stocks"
+    },
+    {
+      "asset_class": "Fixed Income",
+      "percentage": 30,
+      "description": "Government and corporate bonds"
+    },
+    {
+      "asset_class": "Real Estate",
+      "percentage": 10,
+      "description": "REITs and direct property investments"
+    },
+    {
+      "asset_class": "Cash & Equivalents",
+      "percentage": 10,
+      "description": "Short-term Treasury bills and money market"
+    }
+  ]
+}
+
