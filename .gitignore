@@ -3,3 +3,7 @@ __pycache__
 micro
 venv
 attack_results/*.pt
+.ipynb_checkpoints/
+logs/*
+data/*
+attack_venv/
