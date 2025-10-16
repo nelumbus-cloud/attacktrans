@@ -1,62 +1,4 @@
 # datasets/base.py
-from deeprobust.graph.data import Dataset, Dpr2Pyg, Pyg2Dpr
-from scipy.sparse import csr_matrix
-import torch_geometric.transforms as T
-import torch
-import numpy as np
-from deeprobust.graph.utils import get_train_val_test
-from torch_geometric.utils import to_undirected
-
-
-def split_data(data, seed):
-    train_idx, val_idx, test_idx = get_train_val_test(
-        data.num_nodes, stratify=data.y, seed=seed)
-
-    # Create boolean masks
-    data.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    data.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    data.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-
-
-    data.train_mask[train_idx] = True
-    data.val_mask[val_idx] = True
-    data.test_mask[test_idx] = True
-    return data
-
-
-
-def classification_margin(output, true_label):
-    '''probs_true_label - probs_best_second_class'''
-    probs = torch.exp(output)
-    probs_true_label = probs[true_label].clone()
-    probs[true_label] = 0
-    probs_best_second_class = probs[probs.argmax()]
-    return (probs_true_label - probs_best_second_class).item()
-
-
-def select_nodes(target_gcn, idx_test, labels):
-        '''
-        selecting nodes as reported in nettack paper:
-        (i) the 10 nodes with highest margin of classification, i.e. they are clearly correctly classified,
-        (ii) the 10 nodes with lowest margin (but still correctly classified) and
-        (iii) 20 more nodes randomly
-        '''
-    
-        output = target_gcn.predict()
-    
-        margin_dict = {}
-        for idx in idx_test:
-            margin = classification_margin(output[idx], labels[idx])
-            if margin < 0: # only keep the nodes correctly classified
-                continue
-            margin_dict[idx] = margin
-        sorted_margins = sorted(margin_dict.items(), key=lambda x:x[1], reverse=True)
-        high = [x for x, y in sorted_margins[: 10]]
-        low = [x for x, y in sorted_margins[-10: ]]
-        other = [x for x, y in sorted_margins[10: -10]]
-        other = np.random.choice(other, 20, replace=False).tolist()
-    
-        return high + low + other
 
 
 class BaseDataset:
@@ -88,7 +30,7 @@ class BaseDataset:
 
     def fit_surrogate(self, surrogate):
         
-        data = Pyg2Dpr(self.dataset)
+        data = Pyg2Dpr(self.dataset[0])
             
         adj, features, labels = data.adj, data.features, data.labels
 
@@ -107,6 +49,8 @@ class BaseDataset:
         
         target_nodes = select_nodes(surrogate, data.idx_test, data.labels)  
 
+        print(target_nodes)
+        
         return target_nodes
         
         #return self.check_and_resample(target_nodes, data.idx_test)

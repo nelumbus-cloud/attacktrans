@@ -211,25 +211,96 @@ def plot_h2gcn():
 def plot_citeseer():
     file = 'Citeseer.csv'
     df = pd.read_csv(file)
-    model = 'h2gcn'
-    x = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['homophily']
-    yclean = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['misclassification_rate']
-    ymettattack = df[(df['attack_model'] == 'metattack') & (df['model'] == model)].sort_values(by='K')['misclassification_rate']
     fig, ax = plt.subplots(figsize=FIGSIZE)
     ax.set_ylim(0, 1)
     ax.set_ylabel("Misclassification rate")
-    ax.plot(x,yclean, label='Clean graph')
-    ax.plot(x,ymettattack, label='Metattacked graph')
-    plt.savefig('results_figs/h2gch_citeseer.pdf', bbox_inches='tight')
+    for model in ['h2gcn', 'gcn']:
+        x = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['homophily']
+        yclean = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['misclassification_rate']
+        ymettattack = df[(df['attack_model'] == 'metattack') & (df['model'] == model)].sort_values(by='K')['misclassification_rate']
+        ax.plot(x,yclean, label=f'Clean graph: {model.upper()}')
+        ax.plot(x,ymettattack, label=f'Metattacked graph: {model.upper()}')
+    ax.legend(title='Graph Data')
+    plt.savefig('results_figs/h2gcn_citeseer.pdf', bbox_inches='tight')
 
     
 
     
-    
+def plot_chameleon():
+    file = 'chameleon_gcn.csv'
+    df = pd.read_csv(file)
+    fig, ax = plt.subplots(figsize=FIGSIZE)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("Misclassification rate")
+    budget = 12
+    seed = 33
 
     
-    
-    
-    
+    df = df[df['seed']==seed]
 
-plot_citeseer()
+    
+    for model in ['h2gcn', 'gcn']:
+        x = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['homophily']
+        yclean = df[(df['attack_model'] == 'clean') & (df['model'] == model)].sort_values(by='K')['misclassification_rate']
+        ymettattack = df[(df['attack_model'] == 'metattack') & (df['model'] == model) & (df['budget'] >= budget)].sort_values(by='K')['misclassification_rate']
+        ax.plot(x,yclean, label=f'Clean graph: {model.upper()}')
+        ax.plot(x,ymettattack, label=f'Metattacked graph: {model.upper()}')
+
+    ax.legend(title='Graph Data')
+    plt.savefig('results_figs/h2gcn_chameleon.pdf', bbox_inches='tight')
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def plot_misclassification_vs_homophily(file='results/real_datasets.csv', save_path='results_figs/temp.pdf'):
+    df = pd.read_csv(file)
+
+    df = df[(df['dataset']!='Squirrel') & (df['dataset']!='PubMed') & (df['budget'] == 0.2)]
+    
+    # Compute averages per dataset
+    grouped = df.groupby('dataset', as_index=False).agg({
+        'homophily_before': 'mean',
+        'homophily_after': 'mean',
+        'mis_rate_before': 'mean',
+        'mis_rate_after': 'mean'
+    })
+
+    plt.figure(figsize=(5, 3))
+
+    for _, row in grouped.iterrows():
+        # draw line or arrow between before → after
+        plt.arrow(
+            row['homophily_before'], row['mis_rate_before'],
+            row['homophily_after'] - row['homophily_before'],
+            row['mis_rate_after'] - row['mis_rate_before'],
+            color='gray', alpha=0.6, width=0.0003, head_width=0.005, length_includes_head=True
+        )
+
+        # scatter both points
+        plt.scatter(row['homophily_before'], row['mis_rate_before'],
+                    color='gold', edgecolor='black', s=45, zorder=3)
+        plt.scatter(row['homophily_after'], row['mis_rate_after'],
+                    color='royalblue', edgecolor='black', s=45, zorder=3)
+        
+        # label datasets slightly offset from the midpoint
+        mid_x = row['homophily_before']
+        mid_y = (row['mis_rate_before'] + row['mis_rate_after']) / 2
+        plt.text(mid_x + 0.003, mid_y, row['dataset'], fontsize=4)
+
+    plt.xlabel("Homophily")
+    plt.ylabel("Misclassification rate")
+    #plt.title("Change in Misclassification vs. Homophily (Before → After Attack)")
+    plt.grid(True, linestyle=':', alpha=0.5)
+    plt.legend(
+        handles=[
+            plt.Line2D([0], [0], marker='o', color='w', label='Before', markerfacecolor='gold', markeredgecolor='black'),
+            plt.Line2D([0], [0], marker='o', color='w', label='After', markerfacecolor='royalblue', markeredgecolor='black')
+        ],
+        frameon=False
+    )
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches='tight', dpi=300)
+    plt.show()
+
+plot_misclassification_vs_homophily()

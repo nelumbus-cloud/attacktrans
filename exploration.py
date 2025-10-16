@@ -16,8 +16,11 @@ os.makedirs("exploration_outputs", exist_ok=True)
 # Load datasets
 datasets = {
     "Cora": Planetoid(root='data/Cora', name='Cora', transform=NormalizeFeatures())[0],
+    "Citeseer": Planetoid(root='data/Citeseer', name='Citeseer', transform=NormalizeFeatures())[0],
     "Chameleon": WikipediaNetwork(root='data/Chameleon', name='chameleon', transform=NormalizeFeatures())[0]
 }
+
+
 
 # ========== Graph Statistics ==========
 def compute_graph_stats(name, data):

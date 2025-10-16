@@ -1,16 +1,44 @@
 import os
-import numpy as np
-import torch
-from torch_geometric.data import Data
-from deeprobust.graph.data import Dataset, Dpr2Pyg, Pyg2Dpr
-from scipy.sparse import csr_matrix
-import torch_geometric.transforms as T
-import torch
-import numpy as np
-from deeprobust.graph.utils import get_train_val_test
-from torch_geometric.utils import to_undirected
-from datetime import datetime
+import sys
 import csv
+import argparse
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+import torch
+import scipy.sparse as sp
+from scipy.sparse import csr_matrix
+
+import torch_geometric.transforms as T
+from torch_geometric.data import Data
+from torch_geometric.utils import to_undirected
+
+from deeprobust.graph.data import Dataset, Dpr2Pyg, Pyg2Dpr
+from deeprobust.graph.utils import get_train_val_test
+from deeprobust.graph.targeted_attack import Nettack, FGA
+from deeprobust.graph.defense import GCN
+from deeprobust.graph.global_attack import Metattack
+from model import GAT, H2GCN
+
+
+
+
+
+def make_model(model_name, nfeat, nclass, device, **kwargs):
+    model_name = model_name.lower()
+    if model_name == "gcn":
+        return GCN(nfeat=nfeat, nhid=16, nclass=nclass, dropout=0.5, device=device).to(device)
+    elif model_name == "gat":
+        return GAT(nfeat=nfeat, nclass=nclass, device=device, **kwargs)
+    elif model_name == "h2gcn": 
+        return H2GCN(nfeat=nfeat, nclass=nclass, device=device,
+                     hidden=64, k=2, dropout=0.5, use_relu=True, lr=0.01, weight_decay=5e-4)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
+
+
+
 
 def load_graph(dataset_name, k, save_dir='generated_datasets'):
     file_path = os.path.join(save_dir, f"{dataset_name}_{k}.npz")
@@ -29,6 +57,50 @@ def load_graph(dataset_name, k, save_dir='generated_datasets'):
                 train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
     return data
 
+
+    
+def _to_scipy_coo(A):
+    """Coerce adjacency to SciPy COO regardless of whether it's SciPy, NumPy, or torch."""
+    if sp.issparse(A):
+        return A.tocoo()
+    if isinstance(A, np.ndarray):
+        return csr_matrix(A).tocoo()
+    if isinstance(A, torch.Tensor):
+        # supports dense or sparse torch tensors on cpu/gpu
+        if A.is_sparse:
+            A = A.coalesce()
+            idx = A.indices().cpu().numpy()
+            data = A.values().cpu().numpy()
+            n = A.size(0)
+            return sp.coo_matrix((data, (idx[0], idx[1])), shape=(n, n))
+        else:
+            return csr_matrix(A.detach().cpu().numpy()).tocoo()
+    raise TypeError(f"Unsupported adjacency type: {type(A)}")
+
+
+
+def calculate_homophily(adj, labels):
+    """
+    Homophily = fraction of non-self-loop edges that connect same-class nodes.
+    Accepts adj as SciPy sparse, NumPy array, or torch.Tensor (dense or sparse).
+    Accepts labels as NumPy array or torch.Tensor.
+    """
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
+
+    adj = _to_scipy_coo(adj)
+    row, col = adj.row, adj.col
+
+    # remove self-loops
+    mask = row != col
+    row, col = row[mask], col[mask]
+
+    total_edges = len(row)
+    if total_edges == 0:
+        return 0.0
+
+    same_class_edges = np.sum(labels[row] == labels[col])
+    return float(same_class_edges) / float(total_edges)
 
 
 # split data to same as attack papers 20/60/60
@@ -121,6 +193,41 @@ def write_result_csv(filename, dataset_name, seed, K, model, attack_model, budge
             writer.writerow(["date", "dataset_name", "seed", "K", "model", "attack_model", "budget",  "misclassification_rate", "homophily"])
         writer.writerow([current_datetime, dataset_name, seed, K, model, attack_model, budget, misclassification_rate, homophily])
  
+
+
+
+
+def write_result_csv2(filename, dataset, seed, model, attack, budget,
+                     mis_rate_before, mis_rate_after,
+                     homophily_before, homophily_after):
+    """
+    Append experiment results to a CSV file.
+    """
+
+    header = [
+        "timestamp", "dataset", "seed", "model", "attack", "budget",
+        "mis_rate_before", "mis_rate_after",
+        "homophily_before", "homophily_after"
+    ]
+
+    # Current timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Define the row
+    row = [
+        timestamp, dataset, seed, model, attack, budget,
+        mis_rate_before, mis_rate_after,
+        homophily_before, homophily_after
+    ]
+
+    file_exists = os.path.isfile(filename)
+    
+    with open(filename, mode="a", newline="") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(header)
+        writer.writerow(row)
+
 
 if __name__ == '__main__':
     load_graph('Cora', 400)

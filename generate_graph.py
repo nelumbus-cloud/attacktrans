@@ -9,6 +9,15 @@ import argparse
 import sys
 import csv
 
+def construct_circulant(num_classes):
+    dc = {}
+    for i in range(num_classes):
+        dc[i] = [0.0]*num_classes;
+        dc[i][(i+1)%num_classes] = 0.5
+        dc[i][(i-1+num_classes)%num_classes] = 0.5
+
+    return dc
+        
 def calculate_homophily(edge_index, y, num_edges):
     same_label_edges = 0
     for i in range(edge_index.shape[1]):
@@ -141,6 +150,8 @@ if __name__ == "__main__":
             5: [0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.5],
             6: [0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0],
         }
+      
+
     elif dataset_name == "Chameleon":
         K = [600,700,800,1000,1400,1900,3000,5000, 6000, 7000]
         D_c = {
@@ -175,6 +186,8 @@ if __name__ == "__main__":
     else:
         print("No Dc known")
         sys.exit(0)
+
+    sys.exit(0) 
     
     #class to nodes
     V_c = {i: [] for i in range(dataset.num_classes)}
