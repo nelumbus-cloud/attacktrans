@@ -76,4 +76,11 @@ If you use this code in your research, please cite our paper:
 }
 ```
 
+## AI disclaimer
+
+link 1 : https://chatgpt.com/share/68e73dec-9a30-800d-b236-2ecede337ec2
+
+link 2 : https://chatgpt.com/share/68f05d5a-d2f8-800d-a86a-f41397309c21
+
+
 ---
